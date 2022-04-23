@@ -28,7 +28,7 @@ namespace MemorySoulLink
 
             XmlWriterSettings xmlWriterSettings = new XmlWriterSettings();
             xmlWriterSettings.Indent = true;
-            xmlWriterSettings.NewLineOnAttributes = true;
+            xmlWriterSettings.NewLineOnAttributes = false;
             using (XmlWriter writer = XmlWriter.Create(destStream, xmlWriterSettings))
             {
                 xsSubmit.Serialize(writer, o);
@@ -42,10 +42,10 @@ namespace MemorySoulLink
 
         }
 
-        public static void WriteSchema<T>()
+        public static void WriteSchema<T>(string path)
         {
 
-            using (FileStream file = new FileStream("new.xsd", FileMode.Create, FileAccess.ReadWrite))
+            using (FileStream file = new FileStream(path, FileMode.Create, FileAccess.ReadWrite))
             {
                 XmlSchemas schemas = new XmlSchemas();
                 XmlSchemaExporter exporter = new XmlSchemaExporter(schemas);

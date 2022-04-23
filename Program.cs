@@ -43,22 +43,82 @@ namespace MemorySoulLink
                     settingsDemo.HostPort = 6667;
                     settingsDemo.HostTLS = false;
 
-                    settingsDemo.MemoryLines = new MemoryLine[1];
-                    settingsDemo.MemoryLines[0] = new MemoryLine()
+
+                    settingsDemo.Targets = new Target[]
                     {
-                        Name = "HP1",
-                        HexPointerTargetValue = "Pointer to value to sync in hex (2F34A0)",
-                        NumberOfBytes = 4,
-                        HexPointerAboveValueCondition = "[Leave empty to disable] Pointer : alter target if only this value is above a certain number",
-                        AboveValueConditionValue = 0,
-                        AboveNumberOfBytes = 4,
-                        HexPointerBelowValueCondition = "[Leave empty to disable] Pointer : alter target if only this value is below a certain number",
-                        BelowValueConditionValue = 100,
-                        BelowNumberOfBytes = 4,
-                        HexPointerEqualValueCondition = "[Leave empty to disable] Pointer : alter target if only this value is equal a certain number",
-                        EqualValueConditionValue = 100,
-                        EqualNumberOfBytes = 4,
+                        new Target()
+                        {
+                            HexPointer = "01A2B3D",
+                            Name = "HP1Combat",
+                            BytesSize = BytesSize.Four,
+                        },
+                        new Target()
+                        {
+                            HexPointer = "F12434",
+                            Name = "HP1Menu",
+                            BytesSize = BytesSize.Four,
+                        },
+                        new Target()
+                        {
+                            HexPointer = "FDDD34",
+                            Name = "HP2Menu",
+                            BytesSize = BytesSize.Four,
+                        }
                     };
+
+
+                    settingsDemo.TrackedValues = new Models.TrackedValue[2];
+
+                    settingsDemo.TrackedValues[0] = new Models.TrackedValue()
+                    {
+                        HexPointer = "1DA354",
+                        BytesSize = BytesSize.Four,
+                        Actions = new Models.Action[]
+                        {
+                            new Models.UpdateValue()
+                            {
+                                TargetName = "HP1Combat"
+                            }
+                        }
+                    };
+
+                    settingsDemo.TrackedValues[1] = new Models.TrackedValue()
+                    {
+                        HexPointer = "24D144",
+                        BytesSize = BytesSize.Four,
+                        Actions = new Models.Action[]
+                        {
+                            new Models.If()
+                            {
+                                HexPointer1 = "01234A5",
+                                Constant2 = "15",
+                                Operation = "equal",
+                                Then = new Models.Action[]
+                                {
+                                    new Models.UpdateValue()
+                                    {
+                                        TargetName = "HP1Combat"
+                                    }
+                                },
+                                Else = new Models.Action[1]
+                                {
+                                    new Models.UpdateValue()
+                                    {
+                                        TargetName = "HP1Menu"
+                                    }
+                                }
+                            },
+                            new Models.Randomize()
+                            {
+                                TargetName="HP2Menu",
+                                Min = 0,
+                                Max = 133
+
+                            }
+                        }
+                    };
+
+
 
                     if (File.Exists("settings.sample.xml"))
                         File.Delete("settings.sample.xml");
@@ -70,12 +130,12 @@ namespace MemorySoulLink
                     fileStream.Close();
                     fileStream.Dispose();
 
-                    XmlTools.WriteSchema<Settings>();
+                    XmlTools.WriteSchema<Settings>("schema.xsd");
 
                     return;
                 }
-                
-                if(args.Length == 0)
+
+                if (args.Length == 0)
                     settings = XmlTools.FromXml<Settings>(File.OpenRead("settings.xml"));
                 else
                     settings = XmlTools.FromXml<Settings>(File.OpenRead(args[0]));
@@ -166,7 +226,7 @@ namespace MemorySoulLink
             long val = 0;
             if (!long.TryParse(msg[1], out val))
                 return;
-            
+
             Console.WriteLine("Remote change from {0} : [{1}] {2}", args.Name, msg[0], msg[1]);
 
             trackedValues[msg[0]].UpdateValue(val);
@@ -192,7 +252,7 @@ namespace MemorySoulLink
 
             while (m_Run)
             {
-                foreach(var tv in vals)
+                foreach (var tv in vals)
                 {
                     bool changed = tv.CheckIfChanged(out val) || forceUpdate;
                     if (changed)

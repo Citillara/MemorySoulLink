@@ -23,7 +23,6 @@ namespace MemorySoulLink
         [DllImport("kernel32.dll")]
         public static extern Int32 CloseHandle(IntPtr hProcess);
 
-        public enum BytesSize { One, Two, Four };
 
         [Flags]
         public enum ProcessAccessFlags : uint

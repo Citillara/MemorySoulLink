@@ -32,12 +32,17 @@ namespace MemorySoulLink.Models
         [XmlElement(IsNullable = false)]
         public string SessionID { get; set; }
 
-        [XmlElement(IsNullable = false)]
+        [XmlElement(IsNullable = true)]
         public MemoryLine[] MemoryLines { get; set; }
 
         [XmlElement(IsNullable = false)]
         public int PollSpped { get; set; }
 
+        [XmlArray("Targets")]
+        public Target[] Targets { get; set; }
+
+        [XmlArray("TrackedValues")]
+        public TrackedValue[] TrackedValues { get; set; }
     }
 
     [Serializable]
@@ -81,4 +86,89 @@ namespace MemorySoulLink.Models
     }
 
 
+    [Serializable]
+    public class Target
+    {
+        [XmlAttribute]
+        public string Name { get; set; }
+
+        [XmlAttribute]
+        public string HexPointer { get; set; }
+
+        [XmlAttribute]
+        public BytesSize BytesSize { get; set; }
+    }
+
+    [Serializable]
+    [XmlInclude(typeof(UpdateValue))]
+    [XmlInclude(typeof(If))]
+    [XmlInclude(typeof(Randomize))]
+    public class Action
+    {
+
+    }
+
+    [Serializable]
+    public class TrackedValue
+    {
+        [XmlAttribute]
+        public string HexPointer { get; set; }
+
+        [XmlAttribute]
+        public BytesSize BytesSize { get; set; }
+        
+        [XmlArray("Actions")]
+        [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
+        [XmlArrayItem("If", Type = typeof(If))]
+        [XmlArrayItem("Randomize", Type = typeof(Randomize))]
+        public Action[] Actions { get; set; }
+    }
+
+
+    [Serializable]
+    public class UpdateValue : Action
+    {
+        [XmlAttribute]
+        public string TargetName { get; set; }
+    }
+
+    [Serializable]
+    public class Randomize : Action
+    {
+        [XmlAttribute]
+        public string TargetName { get; set; }
+        [XmlAttribute]
+        public long Min { get; set; }
+        [XmlAttribute]
+        public long Max { get; set; }
+    }
+
+
+    [Serializable]
+    public class If : Action
+    {
+        [XmlAttribute]
+        public string HexPointer1 { get; set; }
+        [XmlAttribute()]
+        public string Constant1 { get; set; }
+        [XmlAttribute]
+        public string HexPointer2 { get; set; }
+        [XmlAttribute]
+        public string Constant2 { get; set; }
+        [XmlAttribute]
+        public string Operation { get; set; }
+
+
+        [XmlArray("Then")]
+        [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
+        [XmlArrayItem("If", Type = typeof(If))]
+        [XmlArrayItem("Randomize", Type = typeof(Randomize))]
+        public Action[] Then { get; set; }
+
+        [XmlArray("Else")]
+        [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
+        [XmlArrayItem("If", Type = typeof(If))]
+        [XmlArrayItem("Randomize", Type = typeof(Randomize))]
+        public Action[] Else { get; set; }
+    }
 }
