@@ -13,8 +13,6 @@ namespace MemorySoulLink.Actions
     {
         [XmlAttribute]
         public string TargetName { get; set; }
-        [XmlAttribute]
-        public BytesSize ByteSize { get; set; }
 
         [XmlAttribute]
         public Computations Operation { get; set; }
@@ -25,10 +23,11 @@ namespace MemorySoulLink.Actions
         [XmlAttribute]
         public bool UpdateLocal { get; set; }
 
+        public enum Computations { Addition, Substraction, Multiplication, Division }
+
         delegate long ComputeMethod(long value);
         ComputeMethod Compute;
 
-        public enum Computations { Addition, Substraction }
 
         public override void CheckIntegrity()
         {
@@ -42,6 +41,12 @@ namespace MemorySoulLink.Actions
                     break;
                 case Computations.Substraction:
                     Compute = new ComputeMethod(Substract);
+                    break;
+                case Computations.Multiplication:
+                    Compute = new ComputeMethod(Multiplication);
+                    break;
+                case Computations.Division:
+                    Compute = new ComputeMethod(Division);
                     break;
                 default: throw new NotImplementedException("WTF");
             }
@@ -65,6 +70,16 @@ namespace MemorySoulLink.Actions
         long Substract(long value)
         {
             return value - Value;
+        }
+
+        long Multiplication(long value)
+        {
+            return value * Value;
+        }
+
+        long Division(long value)
+        {
+            return value / Value;
         }
     }
 }

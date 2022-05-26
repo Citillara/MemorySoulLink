@@ -15,7 +15,7 @@ namespace MemorySoulLink
 {
     internal class Program
     {
-        static Version version = new Version(2, 1, 0);
+        static Version version = new Version(2, 2, 1);
         const string CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstyvwxyz0123456789";
 
 
@@ -71,11 +71,11 @@ namespace MemorySoulLink
 
                 foreach (TrackedValue line in m_settings.TrackedValues)
                 {
-                    m_trackedValues.Add(line.Name, new TrackedValue());
+                    m_trackedValues.Add(line.Name, line);
                 }
                 foreach (Target line in m_settings.Targets)
                 {
-                    m_trackedValues.Add(line.Name, new TrackedValue());
+                    Targets.Add(line.Name, line);
                 }
 
                 m_processName = m_settings.ProcessName.Replace(".exe", "");
@@ -92,6 +92,7 @@ namespace MemorySoulLink
                 m_client.Connect();
 
                 Thread thread = new Thread(new ThreadStart(Loop));
+                thread.Name = "MemoryLoop";
                 thread.Start();
 
 
@@ -124,38 +125,75 @@ namespace MemorySoulLink
 
         private static void Loop()
         {
-            Process process = Process.GetProcessesByName(m_processName).FirstOrDefault();
-            if (process == null)
-                return;
-
-            var vals = m_trackedValues.Values;
-            long val = 0;
-            // Read all values once to initialize
-            vals.ToList().ForEach(x => x.CheckIfChanged(process, out val));
-
-            List<TrackedValue> tvToExecute = new List<TrackedValue>();
-
-            while (m_Run)
+            try
             {
-                tvToExecute.Clear();
-                foreach (var tv in vals)
+                Process process = Process.GetProcessesByName(m_processName).FirstOrDefault();
+
+                var vals = m_trackedValues.Values;
+                long val = 0;
+                // Read all values once to initialize
+                if (process != null)
                 {
-                    bool changed = tv.CheckIfChanged(process, out val) || m_forceUpdate;
-                    if (changed)
-                    {
-                        Console.WriteLine("Local change : [{0}] {1}", tv.Name, val.ToString());
-                        tv.PrepareExecute(process, tv.Name, val);
-                        tvToExecute.Add(tv);
-                    }
+                    Console.WriteLine("Process detected");
+                    vals.ToList().ForEach(x => x.CheckIfChanged(process, out val));
+                }
+                else
+                {
+                    Console.WriteLine("Process " + m_processName + " not detected during initialization");
                 }
 
-                tvToExecute.ForEach(x => x.ExecuteActions());
+                List<TrackedValue> tvToExecute = new List<TrackedValue>();
 
-                if (m_forceUpdate)
-                    m_forceUpdate = false;
+                int echo = -1;
 
-                Thread.Sleep(m_settings.Pollspeed);
-                m_memoryLock.WaitOne();
+                while (m_Run)
+                {
+                    process = Process.GetProcessesByName(m_processName).FirstOrDefault();
+
+                    if (process == null)
+                    {
+                        echo++;
+                        if (echo % 10 == 0)
+                            Console.WriteLine("Process " + m_processName + " not detected");
+                        continue;
+                    }
+                    else if (process != null && echo > 0)
+                    {
+                        Console.WriteLine("Process detected again");
+                        vals.ToList().ForEach(x => x.CheckIfChanged(process, out val));
+                        echo = -1;
+                    }
+
+                    tvToExecute.Clear();
+                    foreach (var tv in vals)
+                    {
+                        bool changed = tv.CheckIfChanged(process, out val) || m_forceUpdate;
+                        if (changed)
+                        {
+                            Console.WriteLine("Local change : [{0}] {1}", tv.Name, val.ToString());
+                            tv.PrepareExecute(process, tv.Name, val);
+                            tvToExecute.Add(tv);
+                        }
+                    }
+
+                    tvToExecute.ForEach(x => x.ExecuteActions());
+
+                    if (m_forceUpdate)
+                        m_forceUpdate = false;
+
+                    Thread.Sleep(m_settings.Pollspeed);
+                    m_memoryLock.WaitOne();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            finally
+            {
+                Console.WriteLine("Finalizing loop");
+                m_memoryLock.Set();
+                m_Run = false;
             }
         }
 
