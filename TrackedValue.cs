@@ -50,7 +50,8 @@ namespace MemorySoulLink
             if(string.IsNullOrEmpty(Name))
                 throw new ArgumentNullException("TrackedValue Name cannot be null");
             m_targetPointer = Helpers.ParsePointer(HexPointer, "TrackedValue HexPointer");
-            
+
+            this.Actions.ToList().ForEach(x => x.CheckIntegrity());
         }
 
         public bool CheckIfChanged(Process p, out long newVal)

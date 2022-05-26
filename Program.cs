@@ -15,7 +15,7 @@ namespace MemorySoulLink
 {
     internal class Program
     {
-        static Version version = new Version(2, 2, 1);
+        static Version version = new Version(2, 2, 2);
         const string CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstyvwxyz0123456789";
 
 

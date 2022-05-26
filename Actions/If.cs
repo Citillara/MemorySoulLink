@@ -114,6 +114,7 @@ namespace MemorySoulLink.Actions
             }
 
             this.Then.ToList().ForEach(x => x.CheckIntegrity());
+            this.Else.ToList().ForEach(x => x.CheckIntegrity());
         }
 
 
