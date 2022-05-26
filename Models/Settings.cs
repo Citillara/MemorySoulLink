@@ -32,143 +32,35 @@ namespace MemorySoulLink.Models
         [XmlElement(IsNullable = false)]
         public string SessionID { get; set; }
 
-        [XmlElement(IsNullable = true)]
-        public MemoryLine[] MemoryLines { get; set; }
-
         [XmlElement(IsNullable = false)]
-        public int PollSpped { get; set; }
+        public int Pollspeed { get; set; }
 
         [XmlArray("Targets")]
         public Target[] Targets { get; set; }
 
         [XmlArray("TrackedValues")]
         public TrackedValue[] TrackedValues { get; set; }
-    }
 
-    [Serializable]
-    public class MemoryLine
-    {
-        [XmlElement(IsNullable = false)]
-        public string Name { get; set; }
+        public void CheckIntegrity()
+        {
+            if (string.IsNullOrEmpty(ProcessName))
+                throw new ArgumentNullException("TrackedValue ProcessName cannot be null");
+            if (string.IsNullOrEmpty(UserName))
+                throw new ArgumentNullException("UserName Name cannot be null");
+            if (string.IsNullOrEmpty(Host))
+                throw new ArgumentNullException("Host Name cannot be null");
 
-        [XmlElement(IsNullable = false)]
-        public string HexPointerTargetValue { get; set; }
+            if (HostPort < 1 && HostPort > 0xFFFF)
+                throw new ArgumentOutOfRangeException("Host port must be between 1 and 65535");
 
-        [XmlElement(IsNullable = false)]
-        public int NumberOfBytes { get; set; }
+            if (string.IsNullOrEmpty(SessionID))
+                throw new ArgumentNullException("SessionID Name cannot be null");
 
-        [XmlElement(IsNullable = false)]
-        public string HexPointerAboveValueCondition { get; set; }
+            if (Pollspeed < 1)
+                throw new ArgumentOutOfRangeException("Pollspeed must be above 1");
 
-        [XmlElement(IsNullable = false)]
-        public long AboveValueConditionValue { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public int AboveNumberOfBytes { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public string HexPointerBelowValueCondition { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public long BelowValueConditionValue { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public int BelowNumberOfBytes { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public string HexPointerEqualValueCondition { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public long EqualValueConditionValue { get; set; }
-
-        [XmlElement(IsNullable = false)]
-        public int EqualNumberOfBytes { get; set; }
-    }
-
-
-    [Serializable]
-    public class Target
-    {
-        [XmlAttribute]
-        public string Name { get; set; }
-
-        [XmlAttribute]
-        public string HexPointer { get; set; }
-
-        [XmlAttribute]
-        public BytesSize BytesSize { get; set; }
-    }
-
-    [Serializable]
-    [XmlInclude(typeof(UpdateValue))]
-    [XmlInclude(typeof(If))]
-    [XmlInclude(typeof(Randomize))]
-    public class Action
-    {
-
-    }
-
-    [Serializable]
-    public class TrackedValue
-    {
-        [XmlAttribute]
-        public string HexPointer { get; set; }
-
-        [XmlAttribute]
-        public BytesSize BytesSize { get; set; }
-        
-        [XmlArray("Actions")]
-        [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
-        [XmlArrayItem("If", Type = typeof(If))]
-        [XmlArrayItem("Randomize", Type = typeof(Randomize))]
-        public Action[] Actions { get; set; }
-    }
-
-
-    [Serializable]
-    public class UpdateValue : Action
-    {
-        [XmlAttribute]
-        public string TargetName { get; set; }
-    }
-
-    [Serializable]
-    public class Randomize : Action
-    {
-        [XmlAttribute]
-        public string TargetName { get; set; }
-        [XmlAttribute]
-        public long Min { get; set; }
-        [XmlAttribute]
-        public long Max { get; set; }
-    }
-
-
-    [Serializable]
-    public class If : Action
-    {
-        [XmlAttribute]
-        public string HexPointer1 { get; set; }
-        [XmlAttribute()]
-        public string Constant1 { get; set; }
-        [XmlAttribute]
-        public string HexPointer2 { get; set; }
-        [XmlAttribute]
-        public string Constant2 { get; set; }
-        [XmlAttribute]
-        public string Operation { get; set; }
-
-
-        [XmlArray("Then")]
-        [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
-        [XmlArrayItem("If", Type = typeof(If))]
-        [XmlArrayItem("Randomize", Type = typeof(Randomize))]
-        public Action[] Then { get; set; }
-
-        [XmlArray("Else")]
-        [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
-        [XmlArrayItem("If", Type = typeof(If))]
-        [XmlArrayItem("Randomize", Type = typeof(Randomize))]
-        public Action[] Else { get; set; }
+            Targets.ToList().ForEach(t => t.CheckIntegrity());
+            TrackedValues.ToList().ForEach(t => t.CheckIntegrity());
+        }
     }
 }

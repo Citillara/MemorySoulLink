@@ -9,116 +9,43 @@ using Irc;
 using System.Security.Cryptography;
 using Microsoft.Win32;
 using MemorySoulLink.Models;
+using System.Diagnostics;
 
 namespace MemorySoulLink
 {
     internal class Program
     {
-
+        static Version version = new Version(2, 0, 0);
         const string CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstyvwxyz0123456789";
 
 
         static bool m_Run = true;
-        static IrcClient client;
-        static Settings settings;
+        static IrcClient m_client;
+        static Settings m_settings;
 
-        static bool forceUpdate = false;
+        static bool m_forceUpdate = false;
 
-        static string channel;
+        static string m_channel;
 
-        static Dictionary<string, TrackedValue> trackedValues = new Dictionary<string, TrackedValue>();
+        static Dictionary<string, TrackedValue> m_trackedValues = new Dictionary<string, TrackedValue>();
+        public static Dictionary<string, Target> Targets = new Dictionary<string, Target>();
+
+        static string m_processName;
+
+        public static bool DemoMode = false;
+
+        static ManualResetEvent m_memoryLock = new ManualResetEvent(true);
 
         static void Main(string[] args)
         {
+            Console.WriteLine("MemorySoulLink [" + version + "] (c) Citillara");
             try
             {
 
                 if (args.Length == 0 && !File.Exists("settings.xml"))
                 {
-                    Models.Settings settingsDemo = new Settings();
-                    settingsDemo.SessionID = GenerateRandomString(8);
-                    settingsDemo.ProcessName = "FF7";
-                    settingsDemo.UserName = "YourPlayerNameHere";
-                    settingsDemo.Host = "nyx.oragis.fr";
-                    settingsDemo.HostPort = 6667;
-                    settingsDemo.HostTLS = false;
-
-
-                    settingsDemo.Targets = new Target[]
-                    {
-                        new Target()
-                        {
-                            HexPointer = "01A2B3D",
-                            Name = "HP1Combat",
-                            BytesSize = BytesSize.Four,
-                        },
-                        new Target()
-                        {
-                            HexPointer = "F12434",
-                            Name = "HP1Menu",
-                            BytesSize = BytesSize.Four,
-                        },
-                        new Target()
-                        {
-                            HexPointer = "FDDD34",
-                            Name = "HP2Menu",
-                            BytesSize = BytesSize.Four,
-                        }
-                    };
-
-
-                    settingsDemo.TrackedValues = new Models.TrackedValue[2];
-
-                    settingsDemo.TrackedValues[0] = new Models.TrackedValue()
-                    {
-                        HexPointer = "1DA354",
-                        BytesSize = BytesSize.Four,
-                        Actions = new Models.Action[]
-                        {
-                            new Models.UpdateValue()
-                            {
-                                TargetName = "HP1Combat"
-                            }
-                        }
-                    };
-
-                    settingsDemo.TrackedValues[1] = new Models.TrackedValue()
-                    {
-                        HexPointer = "24D144",
-                        BytesSize = BytesSize.Four,
-                        Actions = new Models.Action[]
-                        {
-                            new Models.If()
-                            {
-                                HexPointer1 = "01234A5",
-                                Constant2 = "15",
-                                Operation = "equal",
-                                Then = new Models.Action[]
-                                {
-                                    new Models.UpdateValue()
-                                    {
-                                        TargetName = "HP1Combat"
-                                    }
-                                },
-                                Else = new Models.Action[1]
-                                {
-                                    new Models.UpdateValue()
-                                    {
-                                        TargetName = "HP1Menu"
-                                    }
-                                }
-                            },
-                            new Models.Randomize()
-                            {
-                                TargetName="HP2Menu",
-                                Min = 0,
-                                Max = 133
-
-                            }
-                        }
-                    };
-
-
+                    DemoMode = true;
+                    Settings settingsDemo = GenerateDemoSettings();
 
                     if (File.Exists("settings.sample.xml"))
                         File.Delete("settings.sample.xml");
@@ -136,25 +63,33 @@ namespace MemorySoulLink
                 }
 
                 if (args.Length == 0)
-                    settings = XmlTools.FromXml<Settings>(File.OpenRead("settings.xml"));
+                    m_settings = XmlTools.FromXml<Settings>(File.OpenRead("settings.xml"));
                 else
-                    settings = XmlTools.FromXml<Settings>(File.OpenRead(args[0]));
+                    m_settings = XmlTools.FromXml<Settings>(File.OpenRead(args[0]));
 
-                foreach (MemoryLine line in settings.MemoryLines)
+                m_settings.CheckIntegrity();
+
+                foreach (TrackedValue line in m_settings.TrackedValues)
                 {
-                    trackedValues.Add(line.Name, new TrackedValue(line, settings.ProcessName));
+                    m_trackedValues.Add(line.Name, new TrackedValue());
+                }
+                foreach (Target line in m_settings.Targets)
+                {
+                    m_trackedValues.Add(line.Name, new TrackedValue());
                 }
 
-                channel = "#" + settings.SessionID;
-                client = new IrcClient(settings.Host, settings.HostPort, settings.UserName, settings.HostTLS);
-                client.OnPerform += Client_OnPerform;
-                client.Password = GetPassword();
-                client.LogEnabled = true;
-                client.LogLevel = MessageLevel.Info;
-                client.LogToConsole = true;
-                client.OnDisconnect += Client_OnDisconnect;
-                client.OnPrivateMessage += Client_OnPrivateMessage;
-                client.Connect();
+                m_processName = m_settings.ProcessName.Replace(".exe", "");
+
+                m_channel = "#" + m_settings.SessionID;
+                m_client = new IrcClient(m_settings.Host, m_settings.HostPort, m_settings.UserName, m_settings.HostTLS);
+                m_client.OnPerform += Client_OnPerform;
+                m_client.Password = GetPassword();
+                m_client.LogEnabled = true;
+                m_client.LogLevel = MessageLevel.Info;
+                m_client.LogToConsole = true;
+                m_client.OnDisconnect += Client_OnDisconnect;
+                m_client.OnPrivateMessage += Client_OnPrivateMessage;
+                m_client.Connect();
 
                 Thread thread = new Thread(new ThreadStart(Loop));
                 thread.Start();
@@ -171,12 +106,13 @@ namespace MemorySoulLink
 
                     if (line == "up")
                     {
-                        forceUpdate = true;
+                        m_forceUpdate = true;
                     }
                 }
 
+                m_memoryLock.Set();
                 m_Run = false;
-                client.Quit("Quitting");
+                m_client.Quit("Quitting");
             }
             catch (Exception ex)
             {
@@ -184,6 +120,93 @@ namespace MemorySoulLink
                 Console.WriteLine("Press any key to exit");
                 Console.ReadKey();
             }
+        }
+
+        private static void Loop()
+        {
+            Process process = Process.GetProcessesByName(m_processName).FirstOrDefault();
+            if (process == null)
+                return;
+
+            var vals = m_trackedValues.Values;
+            long val = 0;
+            // Read all values once to initialize
+            vals.ToList().ForEach(x => x.CheckIfChanged(process, out val));
+
+            List<TrackedValue> tvToExecute = new List<TrackedValue>();
+
+            while (m_Run)
+            {
+                tvToExecute.Clear();
+                foreach (var tv in vals)
+                {
+                    bool changed = tv.CheckIfChanged(process, out val) || m_forceUpdate;
+                    if (changed)
+                    {
+                        Console.WriteLine("Local change : [{0}] {1}", tv.Name, val.ToString());
+                        tv.PrepareExecute(process, tv.Name, val);
+                        tvToExecute.Add(tv);
+                    }
+                }
+
+                tvToExecute.ForEach(x => x.ExecuteActions());
+
+                if (m_forceUpdate)
+                    m_forceUpdate = false;
+
+                Thread.Sleep(m_settings.Pollspeed);
+                m_memoryLock.WaitOne();
+            }
+        }
+
+        public static void LockUpdates()
+        {
+            if(m_Run)
+                m_memoryLock.Reset();
+        }
+
+        public static void UnlockUpdate(Int32 address)
+        {
+            Process process = Process.GetProcessesByName(m_processName).FirstOrDefault();
+            long val = 0;
+            if (process != null)
+            {
+                // Refresh of the values we modified
+                m_trackedValues.Values.Where(t => t.TargetPointer == address).ToList().ForEach(t => t.CheckIfChanged(process, out val));
+            }
+            m_memoryLock.Set();
+        }
+
+        public static void SendUpdate(string name, long value)
+        {
+            m_client.PrivMsg(m_channel, name + ':' + value.ToString());
+        }
+
+        private static void Client_OnPrivateMessage(IrcClient sender, IrcClientOnPrivateMessageEventArgs args)
+        {
+            Process process = Process.GetProcessesByName(m_processName).FirstOrDefault();
+            if (process == null)
+                return;
+
+            // Ignore own messages
+            if (args.Name == m_settings.UserName)
+                return;
+
+            if (!args.Message.Contains(':'))
+                return;
+
+            string[] msg = args.Message.Split(':');
+
+            if (!Targets.ContainsKey(msg[0]))
+                return;
+
+            long val = 0;
+            if (!long.TryParse(msg[1], out val))
+                return;
+
+            Console.WriteLine("Remote change from {0} : [{1}] {2}", args.Name, msg[0], msg[1]);
+
+            Targets[msg[0]].UpdateValue(process, val);
         }
 
         private static string GetPassword()
@@ -209,69 +232,19 @@ namespace MemorySoulLink
             return null;
         }
 
-        private static void Client_OnPrivateMessage(IrcClient sender, IrcClientOnPrivateMessageEventArgs args)
-        {
-            // Ignore own messages
-            if (args.Name == settings.UserName)
-                return;
-
-            if (!args.Message.Contains(':'))
-                return;
-
-            string[] msg = args.Message.Split(':');
-
-            if (!trackedValues.ContainsKey(msg[0]))
-                return;
-
-            long val = 0;
-            if (!long.TryParse(msg[1], out val))
-                return;
-
-            Console.WriteLine("Remote change from {0} : [{1}] {2}", args.Name, msg[0], msg[1]);
-
-            trackedValues[msg[0]].UpdateValue(val);
-        }
-
         private static void Client_OnDisconnect(IrcClient sender, bool wasManualDisconnect)
         {
             if (m_Run != false)
             {
                 m_Run = false;
-                Thread.Sleep(settings.PollSpped * 4);
+                Thread.Sleep(m_settings.Pollspeed * 4);
                 Environment.Exit(1);
-            }
-        }
-
-        private static void Loop()
-        {
-            var vals = trackedValues.Values;
-            long val = 0;
-            // Read all values once to initialize
-            vals.ToList().ForEach(x => x.CheckIfChanged(out val));
-
-
-            while (m_Run)
-            {
-                foreach (var tv in vals)
-                {
-                    bool changed = tv.CheckIfChanged(out val) || forceUpdate;
-                    if (changed)
-                    {
-                        Console.WriteLine("Local change : [{0}] {1}", tv.Name, val.ToString());
-                        client.PrivMsg(channel, tv.Name + ':' + val.ToString());
-                    }
-                }
-
-                if (forceUpdate)
-                    forceUpdate = false;
-
-                Thread.Sleep(settings.PollSpped);
             }
         }
 
         private static void Client_OnPerform(IrcClient sender)
         {
-            sender.Join(channel);
+            sender.Join(m_channel);
         }
 
         private static string GenerateRandomString(int size)
@@ -366,6 +339,96 @@ namespace MemorySoulLink
             }
 
             return plaintext;
+        }
+
+        private static Models.Settings GenerateDemoSettings()
+        {
+
+            Models.Settings settingsDemo = new Settings();
+            settingsDemo.SessionID = GenerateRandomString(8);
+            settingsDemo.ProcessName = "FF7";
+            settingsDemo.UserName = "YourPlayerNameHere";
+            settingsDemo.Host = "nyx.oragis.fr";
+            settingsDemo.HostPort = 6667;
+            settingsDemo.HostTLS = false;
+            settingsDemo.Pollspeed = 750;
+
+            settingsDemo.Targets = new Target[]
+            {
+                        new Target()
+                        {
+                            HexPointer = "01A2B3D",
+                            Name = "HP1Combat",
+                            BytesSize = BytesSize.Four,
+                        },
+                        new Target()
+                        {
+                            HexPointer = "F12434",
+                            Name = "HP1Menu",
+                            BytesSize = BytesSize.Four,
+                        },
+                        new Target()
+                        {
+                            HexPointer = "FDDD34",
+                            Name = "HP2Menu",
+                            BytesSize = BytesSize.Four,
+                        }
+            };
+
+
+            settingsDemo.TrackedValues = new TrackedValue[2];
+
+            settingsDemo.TrackedValues[0] = new TrackedValue()
+            {
+                Name = "TrackedExample",
+                HexPointer = "1DA354",
+                BytesSize = BytesSize.Four,
+                Actions = new Actions.Action[]
+                {
+                            new Actions.UpdateValue()
+                            {
+                                TargetName = "HP1Combat"
+                            }
+                }
+            };
+
+            settingsDemo.TrackedValues[1] = new TrackedValue()
+            {
+                Name = "TrackedHP1",
+                HexPointer = "24D144",
+                BytesSize = BytesSize.Four,
+                Actions = new Actions.Action[]
+                {
+                            new Actions.If()
+                            {
+                                HexPointer1 = "01234A5",
+                                Constant2 = "15",
+                                Operation = Actions.If.Operations.Equal,
+                                Then = new Actions.Action[]
+                                {
+                                    new Actions.UpdateValue()
+                                    {
+                                        TargetName = "HP1Combat"
+                                    }
+                                },
+                                Else = new Actions.Action[1]
+                                {
+                                    new Actions.UpdateValue()
+                                    {
+                                        TargetName = "HP1Menu"
+                                    }
+                                }
+                            },
+                            new Actions.Randomize()
+                            {
+                                TargetName="HP2Menu",
+                                Min = 0,
+                                Max = 133
+
+                            }
+                }
+            };
+            return settingsDemo;
         }
     }
 }
