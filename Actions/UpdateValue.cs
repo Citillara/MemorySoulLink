@@ -19,7 +19,7 @@ namespace MemorySoulLink.Actions
         public override void CheckIntegrity()
         {
             if (string.IsNullOrEmpty(TargetName))
-                throw new ArgumentNullException("UpdateValue Name cannot be null");
+                throw new ArgumentNullException("UpdateValue TargetName cannot be null");
         }
 
         public override void Execute(Process p, string name, long value)

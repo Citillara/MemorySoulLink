@@ -29,6 +29,7 @@ namespace MemorySoulLink
         [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
         [XmlArrayItem("If", Type = typeof(If))]
         [XmlArrayItem("Randomize", Type = typeof(Randomize))]
+        [XmlArrayItem("Math", Type = typeof(MemorySoulLink.Actions.Math))]
         public MemorySoulLink.Actions.Action[] Actions { get; set; }
 
         [XmlIgnore]

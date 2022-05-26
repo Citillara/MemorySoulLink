@@ -86,6 +86,7 @@
   <ItemGroup>
     <Compile Include="Actions\Action.cs" />
     <Compile Include="Actions\If.cs" />
+    <Compile Include="Actions\Math.cs" />
     <Compile Include="Actions\Randomize.cs" />
     <Compile Include="Actions\UpdateValue.cs" />
     <Compile Include="ByteSize.cs" />

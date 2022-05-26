@@ -35,12 +35,14 @@ namespace MemorySoulLink.Actions
         [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
         [XmlArrayItem("If", Type = typeof(If))]
         [XmlArrayItem("Randomize", Type = typeof(Randomize))]
+        [XmlArrayItem("Math", Type = typeof(Math))]
         public Action[] Then { get; set; }
 
         [XmlArray("Else")]
         [XmlArrayItem("UpdateValue", Type = typeof(UpdateValue))]
         [XmlArrayItem("If", Type = typeof(If))]
         [XmlArrayItem("Randomize", Type = typeof(Randomize))]
+        [XmlArrayItem("Math", Type = typeof(Math))]
         public Action[] Else { get; set; }
 
         Int32 m_targetPointer1 = 0;

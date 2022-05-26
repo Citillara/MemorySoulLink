@@ -12,6 +12,7 @@ namespace MemorySoulLink.Actions
     [XmlInclude(typeof(UpdateValue))]
     [XmlInclude(typeof(If))]
     [XmlInclude(typeof(Randomize))]
+    [XmlInclude(typeof(Math))]
     public abstract class Action
     {
         public abstract void Execute(Process p, string name, long value);

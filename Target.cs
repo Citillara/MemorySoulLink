@@ -35,6 +35,7 @@ namespace MemorySoulLink
 
         public void UpdateValue(Process process, long val)
         {
+            Program.LockUpdates();
             switch (m_byteSize)
             {
                 case BytesSize.One:
@@ -47,6 +48,8 @@ namespace MemorySoulLink
                     MemoryHelper.WriteInt(process, m_targetPointer, (int)val);
                     break;
             }
+
+            Program.UnlockUpdate(m_targetPointer);
         }
     }
 }

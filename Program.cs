@@ -15,7 +15,7 @@ namespace MemorySoulLink
 {
     internal class Program
     {
-        static Version version = new Version(2, 0, 0);
+        static Version version = new Version(2, 1, 0);
         const string CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstyvwxyz0123456789";
 
 
@@ -161,7 +161,7 @@ namespace MemorySoulLink
 
         public static void LockUpdates()
         {
-            if(m_Run)
+            if (m_Run)
                 m_memoryLock.Reset();
         }
 
@@ -424,6 +424,14 @@ namespace MemorySoulLink
                                 TargetName="HP2Menu",
                                 Min = 0,
                                 Max = 133
+
+                            },
+                            new Actions.Math()
+                            {
+                                TargetName = "PotionNumber",
+                                 Operation = Actions.Math.Computations.Addition,
+                                 UpdateLocal = true,
+                                 Value = 1
 
                             }
                 }
