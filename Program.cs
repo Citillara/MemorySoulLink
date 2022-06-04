@@ -15,9 +15,10 @@ namespace MemorySoulLink
 {
     internal class Program
     {
-        static Version version = new Version(2, 2, 2);
+        static Version version = new Version(2, 3, 0);
         const string CHAR_SET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstyvwxyz0123456789";
 
+        const int MEMORY_TIMEOUT = 2000;
 
         static bool m_Run = true;
         static IrcClient m_client;
@@ -148,41 +149,48 @@ namespace MemorySoulLink
 
                 while (m_Run)
                 {
-                    process = Process.GetProcessesByName(m_processName).FirstOrDefault();
+                       process = Process.GetProcessesByName(m_processName).FirstOrDefault();
 
                     if (process == null)
                     {
                         echo++;
                         if (echo % 10 == 0)
-                            Console.WriteLine("Process " + m_processName + " not detected");
-                        continue;
-                    }
-                    else if (process != null && echo > 0)
-                    {
-                        Console.WriteLine("Process detected again");
-                        vals.ToList().ForEach(x => x.CheckIfChanged(process, out val));
-                        echo = -1;
-                    }
+                            Console.WriteLine(  "Process " + m_processName + " not detected");
 
-                    tvToExecute.Clear();
-                    foreach (var tv in vals)
+                    }
+                    else
                     {
-                        bool changed = tv.CheckIfChanged(process, out val) || m_forceUpdate;
-                        if (changed)
+                        if (process != null && echo > 0)
                         {
-                            Console.WriteLine("Local change : [{0}] {1}", tv.Name, val.ToString());
-                            tv.PrepareExecute(process, tv.Name, val);
-                            tvToExecute.Add(tv);
+                            Console.WriteLine("Process detected again");
+                            vals.ToList().ForEach(x => x.CheckIfChanged(process, out val));
+                            echo = -1;
                         }
+
+                        tvToExecute.Clear();
+                        m_memoryLock.Reset();
+                        foreach (var tv in vals)
+                        {
+                            bool changed = tv.CheckIfChanged(process, out val) || m_forceUpdate;
+                            if (changed)
+                            {
+                                Console.WriteLine("Local change : [{0}] {1}", tv.Name, val.ToString());
+                                tv.PrepareExecute(process, tv.Name, val);
+                                tvToExecute.Add(tv);
+                            }
+                        }
+
+                        tvToExecute.ForEach(x => x.ExecuteActions());
+
+                        m_memoryLock.Set();
+                        if (m_forceUpdate)
+                            m_forceUpdate = false;
                     }
-
-                    tvToExecute.ForEach(x => x.ExecuteActions());
-
-                    if (m_forceUpdate)
-                        m_forceUpdate = false;
-
                     Thread.Sleep(m_settings.Pollspeed);
-                    m_memoryLock.WaitOne();
+                    if (!m_memoryLock.WaitOne(MEMORY_TIMEOUT))
+                    {
+                        Console.WriteLine("[WARN] Memory timeout on Loop. Please notify Citillara if you see this message");
+                    }
                 }
             }
             catch (Exception ex)
@@ -191,7 +199,7 @@ namespace MemorySoulLink
             }
             finally
             {
-                Console.WriteLine("Finalizing loop");
+                Console.WriteLine("[ERROR] Finalizing loop. Program has crashed, please restart.");
                 m_memoryLock.Set();
                 m_Run = false;
             }
@@ -199,6 +207,10 @@ namespace MemorySoulLink
 
         public static void LockUpdates()
         {
+            if (!m_memoryLock.WaitOne(MEMORY_TIMEOUT))
+            {
+                Console.WriteLine("[WARN] Memory timeout on LockUpdates. Please notify Citillara if you see this message");
+            }
             if (m_Run)
                 m_memoryLock.Reset();
         }
@@ -217,6 +229,7 @@ namespace MemorySoulLink
 
         public static void SendUpdate(string name, long value)
         {
+            Console.WriteLine("Sending " + name + " : " + value);
             m_client.PrivMsg(m_channel, name + ':' + value.ToString());
         }
 

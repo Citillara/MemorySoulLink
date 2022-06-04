@@ -36,6 +36,7 @@ namespace MemorySoulLink.Actions
         [XmlArrayItem("If", Type = typeof(If))]
         [XmlArrayItem("Randomize", Type = typeof(Randomize))]
         [XmlArrayItem("Math", Type = typeof(Math))]
+        [XmlArrayItem("AssignValue", Type = typeof(AssignValue))]
         public Action[] Then { get; set; }
 
         [XmlArray("Else")]
@@ -43,6 +44,7 @@ namespace MemorySoulLink.Actions
         [XmlArrayItem("If", Type = typeof(If))]
         [XmlArrayItem("Randomize", Type = typeof(Randomize))]
         [XmlArrayItem("Math", Type = typeof(Math))]
+        [XmlArrayItem("AssignValue", Type = typeof(AssignValue))]
         public Action[] Else { get; set; }
 
         Int32 m_targetPointer1 = 0;

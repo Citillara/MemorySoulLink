@@ -59,7 +59,7 @@ namespace MemorySoulLink.Actions
             if (UpdateLocal)
                 Program.Targets[TargetName].UpdateValue(p, newVal);
 
-            Program.SendUpdate(name, newVal);
+            Program.SendUpdate(TargetName, newVal);
         }
 
         long Add(long value)
